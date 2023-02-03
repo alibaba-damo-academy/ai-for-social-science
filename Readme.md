@@ -11,7 +11,7 @@ Others interesting results can be explored through this platform.
 This demo is based on Pettingzoo and support multiple existing RL framework such as Rllib and Tianshou.
 ```python
 # download from the gitlab 
-git clone git@gitlab.alibaba-inc.com:eric.czq/ai4sc.git 
+git clone git@github.com:alibaba-damo-academy/ai-for-social-science.git 
 
 # then install requirements 
 pip install pettingzoo
