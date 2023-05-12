@@ -4,7 +4,7 @@ import itertools
 import random 
 
 
-def highest_allocation(state,possible_agents):
+def highest_allocation(state,possible_agents,reserve_price=0):
     """Return the agents with the highest state"""
 
     winner_list = []
@@ -12,7 +12,11 @@ def highest_allocation(state,possible_agents):
     for agt in state:
         highest_bid = max(state[agt], highest_bid)
 
-    second_highest_bid = 0
+    if highest_bid < reserve_price:
+        # no winner
+        return None
+
+    second_highest_bid = reserve_price
 
     for agt in possible_agents:
         agt_bid = state[agt]
@@ -32,6 +36,35 @@ def highest_allocation(state,possible_agents):
     winner = winner_list[0]
 
     return winner
+
+def lowest_allocation(state,possible_agents,reserve_price=0):
+    """Return the agents with the highest state"""
+
+    winner_list = []
+    lowest_bid = 0
+    for agt in state:
+        lowest_bid = min(state[agt], lowest_bid)
+
+    if lowest_bid < reserve_price:
+        # no winner
+        return None
+
+    for agt in possible_agents:
+        agt_bid = state[agt]
+        if agt_bid==lowest_bid:
+            winner_list.append(agt)
+
+
+    # multi-winner situation
+
+    # only one winner
+    if len(winner_list) > 1:
+        random.shuffle(winner_list)
+    winner = winner_list[0]
+
+    return winner
+
+
 
 
 # VCG solver 

@@ -1,11 +1,11 @@
 cd ..
 cd ..
-python auction_bidding_simulate_multiple.py --mechanism 'second_price' --exp_id 3211  --folder_name 'deep_test_multi_env' \
+python auction_bidding_simulate_multiple.py --mechanism 'second_price' --exp_id 3200  --folder_name 'deep_test_multi_env' \
 --bidding_range 10 --valuation_range 10 --env_iters 1000000 --overbid True \
 --round 1 \
 --estimate_frequent 20000 --revenue_averaged_stamp 1000 --exploration_epoch 1 --player_num 5 \
 --step_floor 10000 \
---algorithm 'deep' --lr 1e-3 --update_frequent 1 --multi_item_decay 0
+--algorithm 'deep' --lr 3e-3 --update_frequent 256 --multi_item_decay 0.5
 
 #
 #python auction_bidding_simulate_multiple.py --mechanism 'second_price' --exp_id 33  --folder_name 'deep_test_multi_env' \

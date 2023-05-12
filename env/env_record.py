@@ -28,6 +28,7 @@ class env_record(object):
         self.store_true_value = 0
         self.efficiency_max_true_value = 0
 
+
     def record_efficiency(self, allocation, true_value, epoch,agent_name, end_flag=False):
         if epoch >= self.record_start_epoch:
             self.efficiency_max_true_value = max(self.efficiency_max_true_value, true_value)
@@ -81,7 +82,7 @@ class env_record(object):
 
     def record_revenue(self, allocation, pay, epoch, pay_sign=-1, mode='second_price', end_flag=False):
         if epoch >= self.record_start_epoch:
-            if mode == 'pay_by_submit':
+            if mode == 'pay_by_submit' or 'deep' or 'customed':
                 self.tmp_sum += pay * pay_sign
                 if end_flag:
                     self.revenue_list.append(self.tmp_sum)
@@ -99,7 +100,7 @@ class env_record(object):
                 # self.revenue_list.append(current_revenue)
                 # self.update_revenue_list()
                 
-                print('current_revenue', current_revenue)
+                #print('current_revenue', current_revenue)
                 if allocation == 1:
                     current_revenue = pay * pay_sign
 
@@ -179,3 +180,85 @@ class env_record(object):
             plt.savefig(os.path.join(output_path, figure_name + '_efficiency_avg_on_' + str(self.averaged_stamp)))
             plt.show()
             plt.close()
+
+    # added for agent result plot
+    def init_agent_record(self,agent_name_list):
+        self.agent_reward_his = {agent: [] for agent in agent_name_list}
+        self.agent_avg_reward_his = {agent: [] for agent in agent_name_list}
+
+        self.agent_win_reward_his= {agent: [] for agent in agent_name_list}
+        self.agent_win_avg_reward_his={agent: [] for agent in agent_name_list}
+
+    def record_agent_avg_reward(self,reward,agent_name,win_only=False):
+        if win_only:
+            self.agent_win_avg_reward_his[agent_name].append(reward)
+        else:
+            self.agent_avg_reward_his[agent_name].append(reward)
+        return
+
+    def record_agent_normal_reward(self,reward,agent_name,win_only=False):
+        if win_only:
+            self.agent_win_reward_his[agent_name].append(reward)
+        else:
+            self.agent_reward_his[agent_name].append(reward)
+
+    def record_agent_reward(self,agent_name,reward,avg=False,win_only=False):
+        if avg :
+            self.record_agent_avg_reward(agent_name=agent_name,reward=reward,win_only=win_only)
+        else:
+            self.record_agent_normal_reward(agent_name=agent_name,reward=reward,win_only=win_only)
+        return
+
+    def get_agent_reward_data(self,agent_name,avg,win_only,last_k_epoch=None):
+
+        if win_only:
+            if avg:
+                data = self.agent_win_avg_reward_his[agent_name]
+                plot_config = 'avg_win_reward'
+            else:
+                data = self.agent_win_reward_his[agent_name]
+                plot_config = 'win_reward'
+        elif avg:
+            data = self.agent_avg_reward_his[agent_name]
+            plot_config = 'avg_total_reward'
+        else:
+            data =self.agent_reward_his[agent_name]
+            plot_config='total_reward'
+
+        if last_k_epoch is None:
+            return data,plot_config
+        else:
+            return data[-last_k_epoch:],plot_config
+
+    def plot_agent_reward(self,args,plot_agent_list=[],avg=False,win_only=False,last_k_epoch=None,
+                          path='./', folder_name='', figure_name='', mechanism_name='second_price',
+                          plot_y_range=None
+                          ):
+
+        for agent_name in plot_agent_list:
+
+            plot_data,plot_config =self.get_agent_reward_data(agent_name,avg,win_only,last_k_epoch)
+
+            if len(plot_data) > 0:
+                output_path = os.path.join(os.path.join(path, args.folder_name), folder_name)
+                self.build_path(output_path)
+            else:
+                output_path=None
+
+            plt.plot([x for x in range(len(plot_data))], plot_data,
+                     label=agent_name)
+
+
+        plt.title('averaged selected agent reward'+'_on_' + str(self.averaged_stamp) )
+        plt.ylabel('Expected ' +plot_config + 'Reward')
+        plt.xlabel('epoch / per '+str(self.averaged_stamp))
+        if plot_y_range is not None:
+                plt.ylim(plot_y_range[0], plot_y_range[1])
+
+        plt.legend()
+        if output_path is not None:
+            print(os.path.join(output_path, figure_name + plot_config +'_on_' + str(self.averaged_stamp)))
+            plt.savefig(os.path.join(output_path, figure_name +  plot_config +'_on_'  + str(self.averaged_stamp)))
+            plt.show()
+        plt.close()
+

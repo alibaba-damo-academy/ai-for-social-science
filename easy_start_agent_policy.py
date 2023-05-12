@@ -1,14 +1,15 @@
 import random
 import numpy as np
 from env.multi_dynamic_env import *
-from mini_env.signal_game_env import *
+from mini_env.simple_mini_env1 import *
 from env.self_play_env import *
 from agent.normal_agent import *
+from agent.custom_agent import *
 from rl_utils.solver import *
 from rl_utils.reward_shaping import *
 from rl_utils.budget import *
 from rl_utils.communication import *
-from rl_utils.util import * 
+from rl_utils.util import *
 from plot.plot_util import *
 from plot.print_process import *
 from env.env_record import *
@@ -21,6 +22,8 @@ from agent_utils.signal import *
 from agent_utils.valuation_generator import *
 
 from agent.agent_generate import *
+import test_player_class
+import test_player_func
 
 from copy import deepcopy
 import os
@@ -31,7 +34,7 @@ parser = argparse.ArgumentParser()
 ## mechanism setting
 parser.add_argument('--mechanism', type=str, default='second_price',
                     help='mechanisim name')  # second_price | first_price | third_price | pay_by_submit | vcg
-parser.add_argument('--allocation_mode', type=str, default='highest', 
+parser.add_argument('--allocation_mode', type=str, default='highest',
                     help='allocation mode') # highest | vcg
 
 parser.add_argument('--overbid', type=bool, default=False,
@@ -70,7 +73,7 @@ parser.add_argument('--gpu', type=str, default='1,2,3',
                     help='Set CUDA_VISIBLE_DEVICES')
 parser.add_argument('--exp_id', type=int, default='2',
                     help='experiment id')
-parser.add_argument('--seed', type=int, default = 0, 
+parser.add_argument('--seed', type=int, default = 0,
                     help='seed for reproducibility')
 
 ## env revenue record setting
@@ -152,7 +155,7 @@ parser.add_argument('--public_signal_lower_bound', type=int, default=0,
 parser.add_argument('--public_signal_spectrum', type=int, default=0,
                     help='signal spectrum experiment')
 
-parser.add_argument('--round', type=int, default=10000,
+parser.add_argument('--round', type=int, default=1,
                     help='how much round to apply with mini env')
 
 parser.add_argument('--step_floor', type=int, default=10000,
@@ -171,7 +174,7 @@ parser.add_argument('--multi_item_decay', type=float, default= 1,
                     help='Whether we add reward decay for agent obtaining multiple items within [0,1]')
 
 
-# Multi-item setting 
+# Multi-item setting
 parser.add_argument('--item_num', type=int, default = 1, help="number of items to bid")
 
 
@@ -188,6 +191,8 @@ parser.add_argument('--update_frequent', type=int, default=200,
 parser.add_argument('--env_name', type=str, default='normal',
                     help='the multi env name:[normal | signal_game]  ')
 
+parser.add_argument('--test_player', type=str, default='class', 
+                    choices=['class', 'func'])
 
 supported_function = ['CRRA', 'CARA']  # supported_reward_shaping_function
 rl_lib_algorithm = ['DQN']
@@ -200,140 +205,71 @@ def main(args):
     # Initialize the auction allocation/payment policy of the auctioneer
 
 
-    if args.env_name =='signal_game':
-        print('now use signal game env !')
-        dynamic_env = signal_game_env(round=args.round, item_num=args.item_num, mini_env_iters=1,
-                                        agent_num=args.player_num, args=args,
-                                        policy=Policy(allocation_mode=args.allocation_mode, payment_mode=args.mechanism,
-                                                      action_mode=args.action_mode, args=args),
-                                        set_env=None, init_from_args=True,
-                                        )
-    else:
-        dynamic_env = multi_dynamic_env(round=args.round, item_num=args.item_num, mini_env_iters=1, agent_num=args.player_num, args=args,
-        policy=Policy(allocation_mode=args.allocation_mode, payment_mode=args.mechanism,
-                        action_mode=args.action_mode, args=args),
-        set_env=None, init_from_args=True,
+
+    dynamic_env = simple_mini_env1(round=args.round, item_num=args.item_num, mini_env_iters=10000,
+                                   agent_num=args.player_num, args=args,
+                                   policy=Policy(allocation_mode=args.allocation_mode, 
+                                                 payment_mode=args.mechanism,
+                                                 action_mode=args.action_mode, 
+                                                 args=args),
+                                   set_env=None,
+                                   init_from_args=True, #init from args rather than input params ->
         )
 
     env = dynamic_env.get_mini_env()
     print(env.agents)
 
-    # print(args.inner_cooperate_id)
 
-    if args.smart_step_floor is not None and args.smart_step_floor == 'smart':
-        smart=True
-    else:
-        smart=False
-
-
-    # Initialize agent profile including inherent constraints (budget, bidding 
-    # range ...), Bidding algorithm, interaction with other agents/env. 
-
-
-    for ori_id,agent_name in enumerate(dynamic_env.agent_name_list):
-        agt = dynamic_env.agt_list[agent_name]
-        if args.self_play and args.self_play_id is not None and len(args.self_play_id)>0 and ori_id in args.self_play_id:
-            self_play_envs= self_play_env(item_num=args.item_num, mini_env_iters=50000,
-                                          imaged_agent_num=3,ori_agt_id=ori_id,
-                                          args=deepcopy(args),
-            policy=Policy(allocation_mode=args.allocation_mode, payment_mode=args.mechanism,
-                        action_mode=args.action_mode, args=args),
-            self_play_agent=deepcopy(agt), # a brand new copy to avoid remain reward history
-            estimate_frequent=10000,
-            set_env=None, init_from_args=True,
-            sequential_train=True # False=同时训练 True=self play只计算自己的reward
-            )
-            # have to define the same signal generator as all player apply the same algorithm
-
-
-            self_play_envs.step()
-
-            new_agt = self_play_envs.get_trained_agt()
-            print('self_play trained success ')
-            # only copy algorithm and not copy the self_play behavior or reward history
-            agt.algorithm=deepcopy(new_agt.algorithm)
-
-
-
-    #debug
-    #print(1/0)
-
-
-    # if self play
-    final_budget={agent: [] for agent in dynamic_env.agent_name_list}
-    while dynamic_env.get_current_round() < dynamic_env.get_round():
-
-
-        #update the budget
-        if dynamic_env.budget is not None:
-            last_budget_profile = dynamic_env.budget.get_budget_profile()
-        else:
-            last_budget_profile = {agent: 0 for agent in dynamic_env.agent_name_list}  # add 2 budget for each round
-
-        last_reward_list = dynamic_env.get_mini_env_reward_list()
-        budget_profile= {agent: args.extra_round_income for agent in dynamic_env.agent_name_list} #add extra budget for each round
-
-        for agt in dynamic_env.agent_name_list:
-            budget_profile[agt] = budget_profile[agt] + (last_reward_list[agt] + last_budget_profile[agt])
-
-        if dynamic_env.budget is not None: 
-            dynamic_env.budget.load_budget_profile(budget_profile=budget_profile)  #optimize budget each round
-
-        for agent_name in dynamic_env.agent_name_list:
-            final_budget[agent_name].append(budget_profile[agent_name])
-        # finish budget updating
-
-        # if smart adjust
-        if smart:
-            for agent_name in dynamic_env.agent_name_list:
-                agt = dynamic_env.agt_list[agent_name]
-                if budget_profile[agent_name] < args.step_floor and budget_profile[agent_name]>0: # the maximal step floor is defined step floor
-                    agt.algorithm.set_step_floor(step_floor=budget_profile[agent_name]) #set the step floor to budget
-
+    while dynamic_env.get_current_round() < dynamic_env.get_round(): #only play once
 
 
         # clean the old reward list
         dynamic_env.init_reward_list()
 
+        # #set agent
+        # dynamic_env.init_global_rl_agent()  #now we assign agent by hand-design (see agent_generate)
+        # # [Implementation idea]: first init the default list of all agents, 
+        # # then replace the submitted agents into the default list
 
-        # # adjutst agent policy (include three metioned method)：
-        # dynamic_env.set_rl_agent(rl_agent=None,agent_name=None)
-        #
-        # # only adjust agent algorithm
-        # dynamic_env.set_rl_agent_algorithm(
-        #
-        # )
+        if args.test_player == 'class':
+            user_player = test_player_class.user_player_class(args=args,
+                                                              agent_name='player_3', 
+                                                              highest_value=args.valuation_range-1)
+            custom_agent_name = user_player.get_custom_agent_name()
+
+            dynamic_env.set_rl_agent(rl_agent=user_player,
+                                    agent_name=custom_agent_name) #adjust agent type
+            dynamic_env.assign_generate_true_value(agent_name_list=[custom_agent_name])
+
+        elif args.test_player == 'func':
+            custom_agent_name = test_player_func.get_custom_agent_name()
+            dynamic_env.set_rl_agent_generate_action(generate_action=test_player_func.generate_action, 
+                                                     agent_name=custom_agent_name)
+            dynamic_env.set_rl_agent_update_policy(update_policy=test_player_func.update_policy, 
+                                                   agent_name=custom_agent_name) # add function search agt.update_policy | user can user other infos in basic agents(see in  normal_agent.py )
+            dynamic_env.set_rl_agent_receive_observation(receive_observation=test_player_func.receive_observation, 
+                                                         agent_name=custom_agent_name) #  add function init_reward_list | search receive_observation()
+        else:
+            raise NotImplementedError(f'test_player mode = {args.test_player} not implemented!')
+
+        # adjust agent policy (include three metioned method)：
+        #         # can provide more agent for user design based on the basic agent
+        #         # example: add fixed agent (we provided example)
+        #         # example: add greedy agent ( now different agents are designed due to different format obs)
+
+        # ## only adjust agent algorithm
+        # dynamic_env.set_rl_agent_algorithm(algorithm=custom_algorithm, 
+        #                                    agent_name=custom_agent_name) #search agt.generate_action(obs)
+        # obs need more works to make a standard .
 
 
         #next step
-        dynamic_env.step() #run the mini env
+        dynamic_env.step() #run the mini env and update policy each
 
         # rebuild mini env
         dynamic_env.reset_env() #reinit
 
 
-        s=dynamic_env.custom_env.agents
-        #
-
-        #plot the results
-    import matplotlib.pyplot as plt
-    for agt in dynamic_env.agent_name_list:
-        estimation = final_budget[agt]
-        plt.plot([x for x in range(len(estimation))], estimation, label=str(agt))
-
-    plt.xlabel('round')
-    plt.ylabel('budget')
-    plt.legend()
-    save_dir = os.path.join(os.path.join('./results', args.folder_name), str(args.exp_id))
-    figure_name='budget_results.png'
-    print(os.path.join(save_dir, figure_name))
-    plt.savefig(os.path.join(save_dir, figure_name))
-    plt.show()
-
-    plt.close()
-
-        # env.render()  # this visualizes a single game
-    # temp plot
 
 
 

@@ -1,6 +1,6 @@
-from .customed_env_auction import *
-from .multi_item_static_env import *
-from agent.normal_agent import *
+from env.customed_env_auction import *
+from env.multi_item_static_env import *
+from agent.custom_agent import *
 from rl_utils.solver import *
 from rl_utils.reward_shaping import *
 from rl_utils.budget import *
@@ -8,8 +8,8 @@ from rl_utils.communication import *
 from rl_utils.util import *
 from plot.plot_util import *
 from plot.print_process import *
-from .env_record import *
-from .policy import *
+from env.env_record import *
+from env.policy import *
 from agent_utils.action_encoding import *
 from agent_utils.action_generation import *
 from agent_utils.agent_updating import *
@@ -18,141 +18,37 @@ from agent_utils.signal import *
 from agent_utils.valuation_generator import *
 
 from agent.agent_generate import *
+from env.multi_dynamic_env import *
+from .mini_env_utils import *
 
 from copy import deepcopy
 
-class dynamic_env(object):
-    def __init__(self):
-        # global setting
-        self.round = None  # K
-        self.mini_item = None  # T
-        self.agent_num = None
-        self.total_step = None  # total step = K*T
-        self.args = None
-
-        self.agent_name_list = None  # global agent name list
-        self.agt_list=None
-
-        self.custom_env = None
-        # mini env setting
-        # mini env value config
-        self.public_signal_generator = None
-        self.public_signal_to_value = None
-        self.private_signal_generator = None
-        self.private_signal_to_value = None
-
-        self.budget = None
-
-        # mini env config
-        self.mini_env_iters = None  # mini env multple round
-        self.mini_player_num = None
-        self.mini_action_space = None
-        self.mini_policy = None  # the policy for the allocation and payment rule
-        self.mini_agent_name_list = None
-        self.mini_env_reward_list = None
-
-        # mini env record
-        # Record the simulation results
-        self.revenue_record = None
-
-        self.current_step = 0
-        self.current_round = 0
-
-    def get_current_round(self):
-        return self.current_round
-
-    def get_round(self):
-        return self.round
-
-    def get_current_step(self):
-        return self.current_step
-
-    def get_mini_action_space(self):
-        return self.mini_action_space
-
-    def get_mini_player_num(self):
-        return self.mini_player_num
-
-    def get_mini_policy(self):
-        return self.mini_policy
-
-    def get_mini_env(self):
-        return self.custom_env
-
-    def get_public_signal_generator(self):
-        return self.public_signal_generator
-    def get_public_signal_to_value(self):
-        return self.public_signal_to_value
-
-    def get_private_signal_generator(self):
-        return self.private_signal_generator
-    def get_private_signal_to_value(self):
-        return self.private_signal_to_value
-
-    def get_revenue_record(self):
-        return self.revenue_record
-
-    def get_mini_env_reward_list(self):
-        return self.mini_env_reward_list
 
 
-    def get_budget(self):
-        return self.budget
-
-    def check_mini_env(self):
-        if self.custom_env is None:
-            print('not setting custom env currently!!')
-            return False
-        else:
-            return True
-    def reset_env(self):
-        self.custom_env.reset()
-
-    def set_public_signal_generator(self,public_signal_generator):
-        print('adjust public_signal_generator')
-        self.public_signal_generator=public_signal_generator
-    def set_public_signal_to_value(self,public_signal_to_value):
-        print('adjust public_signal_to_value')
-        self.public_signal_to_value=public_signal_to_value
-
-    def set_private_signal_generator(self,private_signal_generator):
-        print('adjust private_signal_generator')
-        self.private_signal_generator=private_signal_generator
-    def set_private_signal_to_value(self,private_signal_to_value):
-        print('adjust private_signal_to_value')
-        self.private_signal_to_value=private_signal_to_value
-
-    def set_budget(self,budget):
-        print('adjust budget')
-        self.budget=budget
-    def set_revenue_record(self,revenue_record):
-        print('adjust revenue_record')
-        self.revenue_record=revenue_record
-
-    ##export trained algo
-    def check_agent_name(self,agent_name):
-        return agent_name in self.agent_name_list
-
-    def export_agent(self,agent_name):
-        if self.check_agent_name(agent_name=agent_name):
-
-            return deepcopy(self.agt_list[agent_name])
-        else:
-            return None
-    def export_agent_algo(self,agent_name):
-        if self.check_agent_name(agent_name=agent_name):
-
-            return deepcopy(self.agt_list[agent_name].algorithm)
-        else:
-            return None
+def bind(instance, func, as_name=None,print_flag=True):
+    """
+    Bind the function *func* to *instance*, with either provided name *as_name*
+    or the existing name of *func*. The provided *func* should accept the 
+    instance as the first argument, i.e. "self".
+    """
+    if as_name is None:
+        as_name = func.__name__
+    bound_method = func.__get__(instance, instance.__class__)
+    setattr(instance, as_name, bound_method)
+    if print_flag:
+        print('bound_method', bound_method)
+    return bound_method
 
 
-class multi_dynamic_env(dynamic_env):
+class simple_mini_env1(dynamic_env):
     def __init__(self, round, item_num, mini_env_iters, agent_num, args, policy,
                  set_env=None, init_from_args=True,public_signal_generator=None,
-                 public_signal_to_value=None,budget=None
+                 public_signal_to_value=None,budget=None,winner_only=True,skip=True
                  ):
-        super(multi_dynamic_env, self).__init__()
+        super(simple_mini_env1, self).__init__()
+
+        self.winner_only = winner_only  # only winner knows the true value
+
         # global setting
         self.round = round  # K
         self.mini_item = item_num  # T
@@ -163,11 +59,6 @@ class multi_dynamic_env(dynamic_env):
         self.agent_name_list = []  # global agent name list
 
         self.custom_env = set_env
-        # mini env setting
-            # mini env value config
-        self.public_signal_generator = public_signal_generator
-        self.public_signal_to_value=public_signal_to_value
-        self.budget=budget
 
             # mini env config
         self.mini_env_iters = mini_env_iters  # mini env multple round
@@ -184,30 +75,31 @@ class multi_dynamic_env(dynamic_env):
         self.current_step = 0
         self.current_round = 0
 
-        if init_from_args:
-            self.init_mini_env_setting_from_args()
-            self.init_custom_env()
 
-        #may be none
+        if skip:
+            if init_from_args:
+                self.init_mini_env_setting_from_args()
+                self.init_custom_env()
 
-        if self.check_mini_env():
-            self.custom_env.reset()
-            # get agent name
-            self.mini_agent_name_list = self.custom_env.agents
-            self.agent_name_list=deepcopy(self.custom_env.agents)         #global = current on init
-            #
-            self.mini_policy.assign_agent(
-                self.mini_agent_name_list)  # assign the list of agent into the allocation and payment rule
+            #may be none
+            if self.check_mini_env():
+                self.custom_env.reset()
+                # get agent name
+                self.mini_agent_name_list = self.custom_env.agents
+                self.agent_name_list = deepcopy(self.custom_env.agents)  # global = current on init
+                #
+                self.mini_policy.assign_agent(
+                    self.mini_agent_name_list)  # assign the list of agent into the allocation and payment rule
 
-            self.init_generator_from_args()
-            self.agt_list = {agent: None for agent in self.custom_env.agents}
+                self.agt_list = {agent: None for agent in self.custom_env.agents}
 
-            #init reward list
-            self.init_reward_list()
+                # init reward list
+                self.init_reward_list()
 
-        self.init_global_rl_agent()
+            self.init_global_rl_agent()
+            self.assign_generate_true_value(self.agent_name_list)
 
-        self.init_record()
+            self.init_record()
 
     def reset_env(self):
         self.custom_env.reset()
@@ -276,58 +168,14 @@ class multi_dynamic_env(dynamic_env):
 
         return
 
-    def init_generator_from_args(self):
-        args=self.args
-
-        if args.budget_mode is not None:
-            budget = build_budget(args, agent_name_list=self.custom_env.agents)
-
-            self.set_budget(budget)
-
-        if args.public_signal:
-            if 'kl' in args.folder_name:
-                public_signal_generator = KL_Signal(dtype='Discrete', feature_dim=args.public_signal_dim,
-                                                    lower_bound=0, upper_bound=args.public_signal_range,
-                                                    generation_method='uniform',
-                                                    value_to_signal=args.value_to_signal,
-                                                    value_generator_mode=args.value_generator_mode
-                                                    )  # assume upperbound
-            else:
-                public_signal_generator = Signal(dtype='Discrete', feature_dim=args.public_signal_dim,
-                                                 lower_bound=0, upper_bound=args.public_signal_range,
-                                                 generation_method='uniform',
-                                                 value_to_signal=args.value_to_signal,
-                                                 public_signal_asym=args.public_signal_asym
-                                                 )  # assume upperbound
-            if args.value_to_signal:
-                value_generator_mode = 'fixed'
-            else:
-                value_generator_mode = args.value_generator_mode
-
-            public_signal_to_value = public_value_generator(signal_generator=public_signal_generator,
-                                                            value_generator_mode=value_generator_mode,
-                                                            valuation_range=args.valuation_range
-                                                            )
-            if args.public_signal_spectrum:
-                # Set up an interpolation experiment between pure private value and
-                # pure public value model
-                new_public_signal_generator = deepcopy(public_signal_generator)
-                new_public_signal_generator.lower_bound = args.public_signal_lower_bound
-                new_public_signal_generator.upper_bound = args.public_signal_range - args.public_signal_lower_bound
-                public_signal_to_value = public_value_generator(signal_generator=new_public_signal_generator,
-                                                                value_generator_mode=value_generator_mode,
-                                                                valuation_range=args.valuation_range
-                                                                )
-            if public_signal_generator is not None:
-                self.set_public_signal_generator(public_signal_generator)
-            if public_signal_to_value is not None:
-                self.set_public_signal_to_value(public_signal_to_value)
-
     def init_record(self):
         # Record the simulation results
         self.revenue_record = None
         self.revenue_record = env_record(record_start_epoch=self.args.revenue_record_start,  # start record env revenue number
                                     averaged_stamp=self.args.revenue_averaged_stamp)
+
+        # add agent plot
+        self.revenue_record.init_agent_record(agent_name_list=self.agent_name_list)
 
     def init_reward_list(self):
         if self.agent_name_list is not None:
@@ -339,22 +187,64 @@ class multi_dynamic_env(dynamic_env):
 
     def init_global_rl_agent(self):
         if self.agt_list is not None:
-            agt_list = generate_agent(env=self.custom_env, args=self.args, agt_list=self.agt_list, budget=self.budget)
-            self.agt_list=agt_list
+            highest_value = self.args.valuation_range - 1
+            for i, agt in enumerate(self.custom_env.agents):
+                new_agent = deepcopy(simple_greedy_agent(
+                    args=self.args, agent_name=agt, highest_value=highest_value))
+                self.agt_list[agt] = new_agent
 
         else:
             print('agent list is None, init RL agents failed')
+
+    def assign_generate_true_value(self, agent_name_list):
+
+        def generate_true_value(self):
+            true_value = random.randint(self.lowest_value, self.highest_value)
+            self.record_true_value(true_value)
+
+        for name in agent_name_list:
+            bind(self.agt_list[name], generate_true_value,print_flag=False)
+            print(f'bind (function) generate_true_value for agent {name}')
 
     def set_rl_agent(self,rl_agent,agent_name):
         # assign or update an agent(rl_agent) named 'agent_name' to the rl list
         if self.agt_list is not None:
             if agent_name in self.agt_list:
                 self.agt_list[agent_name]=rl_agent
-                print('replace rl agent sucess ')
+                print(f'replace rl agent {agent_name} success!')
 
         else:
             print('agent list is None, add RL agent' +str(agent_name)+ 'failed')
 
+    def set_rl_agent_algorithm(self, algorithm, agent_name):
+        agt = self.agt_list[agent_name]
+        agt.set_algorithm(algorithm)
+        print(f'set (element) algorithm of agent {agent_name} success!')
+
+    def set_rl_agent_generate_action(self, generate_action, agent_name):
+        agt = self.agt_list[agent_name]
+        bind(agt, generate_action)
+        # agt.set_generate_action(generate_action)
+        print(f'binding (function) generate_action with agent {agent_name} success!')
+
+    def set_rl_agent_update_policy(self, update_policy, agent_name):
+        agt = self.agt_list[agent_name]
+        bind(agt, update_policy)
+        # agt.set_update_policy(update_policy)
+        print(f'set (function) update_policy of agent {agent_name} success!')
+
+    def set_rl_agent_receive_observation(self, receive_observation, agent_name):
+        agt = self.agt_list[agent_name]
+        bind(agt, receive_observation)
+        # agt.set_receive_observation(receive_observation)
+        print(f'set (function) receive_observation of agent {agent_name} success!')
+
+    #add test policy
+    def set_rl_agent_test_policy(self,test_policy,agent_name):
+        agt = self.agt_list[agent_name]
+        bind(agt, test_policy, as_name='test_policy')
+        # agt.set_update_policy(update_policy)
+        print(f'set (function) test_policy of agent {agent_name} success!')
 
     def set_mini_env_iter(self, adjusted_mimi_env_iters=None):
         if adjusted_mimi_env_iters is not None:
@@ -399,6 +289,13 @@ class multi_dynamic_env(dynamic_env):
         print('to be done')
 
 
+    def user_communication(self,env,args,agt_list,agent_name):
+        # may move to the basic mini_env class later
+        defalut_parm=1
+        if defalut_parm:
+            extra_info = communication(env, args, agt_list, agent_name)
+
+        return extra_info
 
 
     def step(self,agents_list=None):
@@ -424,31 +321,10 @@ class multi_dynamic_env(dynamic_env):
             agt = self.agt_list[agent_name]
             agt_idx = env.agents.index(agent_name)
 
-            # generate action for all agent
-            if agent_name == env.agents[0] and (not termination) and (not truncation):
-                # start of a bidding episode since we loop according to the order of
-                # agent
+            if (not termination) and (not truncation):
+                agt.generate_true_value()
+                # print(agt.get_latest_true_value())
 
-                # generate public signal
-                if self.public_signal_generator is not None:
-                    last_public_value = self.public_signal_to_value.get_last_public_gnd_value()
-                    # public_signal_to_value.generate_value(obs=None, gnd=True, weighted=False) # get value before update the new signal
-
-                    self.public_signal_generator.generate_signal(data_type='int')  # update the signal
-                    # for debug
-                    global_signal = self.public_signal_generator.get_whole_signal_realization()
-
-                # Update auction info (signal realization) at the start of an auction
-                update_agent_profile(env, args, self.agt_list, agent_name,
-                                     self.budget,
-                                     public_signal_generator=self.public_signal_generator,
-                                     public_signal_to_value=self.public_signal_to_value
-                                     )  # should update all the latest true value function
-                # for debug
-                if self.public_signal_generator is not None:
-                    global_signal = self.public_signal_generator.get_whole_signal_realization()
-
-                extra_info = communication(env, args, self.agt_list, agent_name)
             if (self.mini_item == 1 and ((args.action_mode == 'div' and _obs == args.bidding_range * args.valuation_range + 1) or \
                         (args.action_mode == 'same' and _obs == args.bidding_range + 1))) or \
                     (self.mini_item > 1 and ((args.action_mode == 'div' and _obs == [args.bidding_range * args.valuation_range + 1]*self.mini_item) or \
@@ -458,21 +334,21 @@ class multi_dynamic_env(dynamic_env):
                     # start of a auction, and auction allocation happens at the end. We
                     # simply the implementation by setting both action to the start by
                     # skipping them at the first round.
+                    print('first round skipping')
+                    allocation=None #added fixed bug
+                    pass
 
-                    a=1
             else:  # Compute reward and update agent policy each round
                 allocation = info['allocation']
                 # get true value for computing the reward
-                if args.public_signal:
-                    true_value = last_public_value
-                    if true_value is None: # if last round is none = not exist last round
-                        true_value = self.public_signal_to_value.get_last_public_gnd_value()
 
-                else:
-                    if (not termination) and (not truncation):
-                        true_value = agt.get_last_round_true_value()
-                    else: #done, not generate new value
-                        true_value = agt.get_latest_true_value()
+                # obs record
+                obs = agt.get_last_obs()
+
+                if (not termination) and (not truncation):
+                    true_value = agt.get_last_round_true_value()
+                else: #done, not generate new value
+                    true_value = agt.get_latest_true_value()
                 
                 # adjust each agent with his reward function
                 final_reward = compute_reward(true_value=true_value, pay=reward,
@@ -485,24 +361,32 @@ class multi_dynamic_env(dynamic_env):
                                               )  # reward shaping
 
                 last_action = agt.get_latest_action()
+
                 last_state = []  # [last_true_value, last_action]  # [1-H, 0-H-1]
                 # update poicy
-                agt.update_policy(state=last_state, reward=final_reward,done=truncation)
+                agt.update_policy(obs=obs, reward=final_reward,done=truncation)
+                agt.record_reward(final_reward)
                 # record each step
 
                 self.add_reward_by_agt_name(agt_name=agent_name,reward=final_reward)
                 record_step(args, agt, allocation, agent_name, self.current_step+self.mini_env_iters*self.current_round, env, reward, self.revenue_record,agents_list=self.agent_name_list)
 
-            if args.public_signal:
-                # Given the public signal realization, generate the public signal
-                # observable to the agent
-                public_signal = self.public_signal_generator.get_partial_signal_realization(
-                    observed_dim_list=agt.get_public_signal_dim_list())
-                agt.receive_partial_obs_true_value(true_value=self.public_signal_to_value.generate_value(obs=public_signal))
+            obs = agt.receive_observation(args, self.budget, agent_name, agt_idx, 
+                                          extra_info=None, observation=observation,
+                                          public_signal=public_signal,
+                                          true_value_list=agt.get_true_value_history(), 
+                                          action_history=agt.get_action_history(), 
+                                          reward_history=agt.get_reward_history(), 
+                                          allocation_history=agt.get_allocation_history()
+                                          )
+            if not self.winner_only or allocation:
+                # add the information of the payment into the obs
+                obs = increase_info_to_obs(obs, extra_info_name='payment', value=reward)
 
-            obs = receive_observation(args, self.budget, agent_name, agt_idx, extra_info, observation,
-                                      public_signal=public_signal
-                                      )
+
+
+            agt.record_obs(obs)
+            # print('received obs', obs)
 
             # new round behavior
             # agt.generate_true_value()
@@ -512,13 +396,18 @@ class multi_dynamic_env(dynamic_env):
             if termination or truncation:
                 env.step(None)
             else:
-                new_action = action_generation(args, agt, obs)  # get the next round action based on the observed budget
+                # print(agent_name, 'agent_name')
+                new_action = agt.generate_action(obs)  # get the next round action based on the observed budget
+                agt.record_action(new_action)
+                # print('obs=', obs, 'new_action=', new_action)
 
                 ## cooperate infomation processing [eric]
                 submit_info_to_env(args, agt_idx, self.mini_policy, agent_name, next_true_value)
                 env.step(new_action)
             ## print setting
             self.current_step += 1
+
+            # require more work here 2.20
             print_process(env, args, self.agt_list, new_action, agent_name, next_true_value, self.current_step+self.mini_env_iters*self.current_round, self.revenue_record,agents_list=self.agent_name_list)
 
             #env.render()  # this visualizes a single game

@@ -68,8 +68,13 @@ def build_estimation(args, agent_list, env_agent, estimation=[]):
                     else:
                         partial_signal_value = signal_to_value_sum(signal_decode(args, state))
 
+
                     if partial_signal_value == 0:
-                        estimation[agent].append(0.0)
+                        if args.test_mini_env==1:
+                            estimation[agent].append(action)
+                        else:
+                            estimation[agent].append(0.0)
+
                     else:
                         estimation[agent].append(action * 1.0 / partial_signal_value)
 
@@ -158,7 +163,7 @@ def build_payoff_winprob_estimation(args, agent_list, env_agent, \
 
 
 def get_mechanism_name(args):
-    mechanism_list = ['second_price', 'first_price', 'third_price', 'pay_by_submit', 'vcg']
+    mechanism_list = ['second_price', 'first_price', 'third_price', 'pay_by_submit', 'vcg','deep','customed']
 
     if args.mechanism in mechanism_list:
         mechanism_name = args.mechanism
@@ -341,6 +346,7 @@ def plot_figure(path, folder_name, args, epoch, prefix=None,
     else:
         plt.ylabel('bid/valuation')
     if args.public_signal:
+        plt.ylim(0, 4.0)
         plt.xlabel('partial signal(State)')
     else:
         plt.ylim(0, 2.0)

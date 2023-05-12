@@ -1,0 +1,8 @@
+pettingzoo
+torch
+gym
+scipy
+matplotlib
+seaborn
+
+

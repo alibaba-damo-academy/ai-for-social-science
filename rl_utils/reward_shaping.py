@@ -31,7 +31,10 @@ def compute_reward(true_value, pay, allocation=0, pay_sign=-1,
 
                    reward_shaping=False, reward_function_config={}, user_id=None, budget=None, args=None, info=None
                    ):
-    other_value = info['other_value']
+    if 'other_value' in info:
+        other_value = info['other_value']
+    else:
+        other_value =0
 
 
 

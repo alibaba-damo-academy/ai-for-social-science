@@ -34,8 +34,8 @@ class example_Net1(nn.Module):
     def __init__(self, state_shape, action_shape):
         super().__init__()
         self.model = nn.Sequential(
-            nn.Linear(np.prod(state_shape), 32), nn.ReLU(inplace=True),
-            nn.Linear(32, 32), nn.ReLU(inplace=True),
+            nn.Linear(np.prod(state_shape), 32),
+            nn.Linear(32, 32), nn.ReLU(),
             nn.Linear(32, np.prod(action_shape)),
         )
 

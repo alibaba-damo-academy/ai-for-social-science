@@ -1,4 +1,5 @@
-from gym.spaces import Discrete
+#from gym.spaces import Discrete
+from gymnasium.spaces import Discrete
 import numpy as np
 import functools
 from pettingzoo import AECEnv

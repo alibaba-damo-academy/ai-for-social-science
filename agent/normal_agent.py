@@ -25,6 +25,7 @@ class base_agent(object):
     def update_policy(self,state,reward):
         return
 
+
     ## get ###
 
     def get_last_action(self):
@@ -233,6 +234,7 @@ class greedy_agent(base_agent):
         self.record_reward(reward)
 
         return
+
 
     def encode(self,last_state):
         """

@@ -1,5 +1,5 @@
-from .customed_env_auction import *
-from .multi_item_static_env import *
+from env.customed_env_auction import *
+from env.multi_item_static_env import *
 from agent.normal_agent import *
 from rl_utils.solver import *
 from rl_utils.reward_shaping import *
@@ -8,8 +8,8 @@ from rl_utils.communication import *
 from rl_utils.util import *
 from plot.plot_util import *
 from plot.print_process import *
-from .env_record import *
-from .policy import *
+from env.env_record import *
+from env.policy import *
 from agent_utils.action_encoding import *
 from agent_utils.action_generation import *
 from agent_utils.agent_updating import *
@@ -18,141 +18,17 @@ from agent_utils.signal import *
 from agent_utils.valuation_generator import *
 
 from agent.agent_generate import *
+from env.multi_dynamic_env import *
+from .mini_env_utils import *
 
 from copy import deepcopy
 
-class dynamic_env(object):
-    def __init__(self):
-        # global setting
-        self.round = None  # K
-        self.mini_item = None  # T
-        self.agent_num = None
-        self.total_step = None  # total step = K*T
-        self.args = None
-
-        self.agent_name_list = None  # global agent name list
-        self.agt_list=None
-
-        self.custom_env = None
-        # mini env setting
-        # mini env value config
-        self.public_signal_generator = None
-        self.public_signal_to_value = None
-        self.private_signal_generator = None
-        self.private_signal_to_value = None
-
-        self.budget = None
-
-        # mini env config
-        self.mini_env_iters = None  # mini env multple round
-        self.mini_player_num = None
-        self.mini_action_space = None
-        self.mini_policy = None  # the policy for the allocation and payment rule
-        self.mini_agent_name_list = None
-        self.mini_env_reward_list = None
-
-        # mini env record
-        # Record the simulation results
-        self.revenue_record = None
-
-        self.current_step = 0
-        self.current_round = 0
-
-    def get_current_round(self):
-        return self.current_round
-
-    def get_round(self):
-        return self.round
-
-    def get_current_step(self):
-        return self.current_step
-
-    def get_mini_action_space(self):
-        return self.mini_action_space
-
-    def get_mini_player_num(self):
-        return self.mini_player_num
-
-    def get_mini_policy(self):
-        return self.mini_policy
-
-    def get_mini_env(self):
-        return self.custom_env
-
-    def get_public_signal_generator(self):
-        return self.public_signal_generator
-    def get_public_signal_to_value(self):
-        return self.public_signal_to_value
-
-    def get_private_signal_generator(self):
-        return self.private_signal_generator
-    def get_private_signal_to_value(self):
-        return self.private_signal_to_value
-
-    def get_revenue_record(self):
-        return self.revenue_record
-
-    def get_mini_env_reward_list(self):
-        return self.mini_env_reward_list
-
-
-    def get_budget(self):
-        return self.budget
-
-    def check_mini_env(self):
-        if self.custom_env is None:
-            print('not setting custom env currently!!')
-            return False
-        else:
-            return True
-    def reset_env(self):
-        self.custom_env.reset()
-
-    def set_public_signal_generator(self,public_signal_generator):
-        print('adjust public_signal_generator')
-        self.public_signal_generator=public_signal_generator
-    def set_public_signal_to_value(self,public_signal_to_value):
-        print('adjust public_signal_to_value')
-        self.public_signal_to_value=public_signal_to_value
-
-    def set_private_signal_generator(self,private_signal_generator):
-        print('adjust private_signal_generator')
-        self.private_signal_generator=private_signal_generator
-    def set_private_signal_to_value(self,private_signal_to_value):
-        print('adjust private_signal_to_value')
-        self.private_signal_to_value=private_signal_to_value
-
-    def set_budget(self,budget):
-        print('adjust budget')
-        self.budget=budget
-    def set_revenue_record(self,revenue_record):
-        print('adjust revenue_record')
-        self.revenue_record=revenue_record
-
-    ##export trained algo
-    def check_agent_name(self,agent_name):
-        return agent_name in self.agent_name_list
-
-    def export_agent(self,agent_name):
-        if self.check_agent_name(agent_name=agent_name):
-
-            return deepcopy(self.agt_list[agent_name])
-        else:
-            return None
-    def export_agent_algo(self,agent_name):
-        if self.check_agent_name(agent_name=agent_name):
-
-            return deepcopy(self.agt_list[agent_name].algorithm)
-        else:
-            return None
-
-
-class multi_dynamic_env(dynamic_env):
+class signal_game_env(dynamic_env):
     def __init__(self, round, item_num, mini_env_iters, agent_num, args, policy,
                  set_env=None, init_from_args=True,public_signal_generator=None,
                  public_signal_to_value=None,budget=None
                  ):
-        super(multi_dynamic_env, self).__init__()
+        super(signal_game_env, self).__init__()
         # global setting
         self.round = round  # K
         self.mini_item = item_num  # T
@@ -168,6 +44,9 @@ class multi_dynamic_env(dynamic_env):
         self.public_signal_generator = public_signal_generator
         self.public_signal_to_value=public_signal_to_value
         self.budget=budget
+
+
+        self.sealed_auction = True #
 
             # mini env config
         self.mini_env_iters = mini_env_iters  # mini env multple round
@@ -204,6 +83,7 @@ class multi_dynamic_env(dynamic_env):
 
             #init reward list
             self.init_reward_list()
+
 
         self.init_global_rl_agent()
 
@@ -338,12 +218,44 @@ class multi_dynamic_env(dynamic_env):
 
 
     def init_global_rl_agent(self):
+        print('-------------')
+        print('init global agent in signal game !!')
+        print('----------')
+
         if self.agt_list is not None:
+
+            #can be optimize to assign different algorithem
             agt_list = generate_agent(env=self.custom_env, args=self.args, agt_list=self.agt_list, budget=self.budget)
+
             self.agt_list=agt_list
 
         else:
             print('agent list is None, init RL agents failed')
+
+    def set_rl_agent_algorithm(self,agent_name,bidding_range=None,highest_value=None):
+
+            agt = self.agt_list[agent_name]
+
+            if bidding_range is not None:
+                # adjust algorithm
+                new_bidding_range=bidding_range
+                #assign the highest value
+                if highest_value is None:
+
+                    highest_value = int(agt.algorithm.bandit_n / self.args.bidding_range)
+
+                agt.set_algorithm(
+                    EpsilonGreedy_auction(bandit_n=(highest_value + 1) * new_bidding_range,
+                                          bidding_range=new_bidding_range, eps=0.01,
+                                          start_point=int(self.args.exploration_epoch),
+                                          # random.random()),
+                                          overbid=self.args.overbid, step_floor=int(self.args.step_floor),
+                                          signal=self.args.public_signal
+                                          )  # 假设bid 也从分布中取
+                    , item_num=self.args.item_num
+                )
+                print('adjust set_algorithm in ' +str(agent_name) +'to bidding range '+ str(bidding_range))
+
 
     def set_rl_agent(self,rl_agent,agent_name):
         # assign or update an agent(rl_agent) named 'agent_name' to the rl list
@@ -449,6 +361,7 @@ class multi_dynamic_env(dynamic_env):
                     global_signal = self.public_signal_generator.get_whole_signal_realization()
 
                 extra_info = communication(env, args, self.agt_list, agent_name)
+
             if (self.mini_item == 1 and ((args.action_mode == 'div' and _obs == args.bidding_range * args.valuation_range + 1) or \
                         (args.action_mode == 'same' and _obs == args.bidding_range + 1))) or \
                     (self.mini_item > 1 and ((args.action_mode == 'div' and _obs == [args.bidding_range * args.valuation_range + 1]*self.mini_item) or \
@@ -526,3 +439,5 @@ class multi_dynamic_env(dynamic_env):
         self.current_round+=1
 
         #print(self.mini_env_reward_list)
+
+

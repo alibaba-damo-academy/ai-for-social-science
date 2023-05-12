@@ -79,12 +79,13 @@ def generate_agent(env, args, agt_list, budget):
                 print('apply the deep learning altgorithm')
                 new_agent.set_algorithm(
                     deep_solver( bandit_n=(highest_value + 1) * args.bidding_range,
-                                          bidding_range=args.bidding_range, eps=0.1,
+                                          bidding_range=args.bidding_range, eps=0.5,
                                           start_point=int(args.exploration_epoch),
                                           # random.random()),
                                           overbid=args.overbid, step_floor=int(args.step_floor),
                                           signal=args.public_signal,
-                                 cumulative_round=args.item_num-1,state_range=(highest_value + 1),
+                                 cumulative_round=2,#args.item_num-1,
+                                 state_range=(highest_value + 1),
                                  lr=args.lr, discount_factor=args.multi_item_decay,
                                  model_name='DQN', update_frequent=args.update_frequent,
                                  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

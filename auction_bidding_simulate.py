@@ -148,6 +148,9 @@ parser.add_argument('--public_signal_lower_bound', type=int, default=0,
 parser.add_argument('--public_signal_spectrum', type=int, default=0,
                     help='signal spectrum experiment')
 
+# Multi-item setting
+parser.add_argument('--item_num', type=int, default = 1, help="number of items to bid")
+
 
 
 

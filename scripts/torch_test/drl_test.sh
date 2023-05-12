@@ -1,0 +1,1 @@
+python test_mini_env/test_signal_game.py --mode pytorch --pytorch_lib_avalable --method ppo

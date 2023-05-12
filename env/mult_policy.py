@@ -3,12 +3,12 @@ from .allocation_rule import *
 from .payment_rule import *
 from agent_utils.action_encoding import *
 
-class Policy(object):
+class Multi_Policy(object):
     """
     Allocation policy that decides which agent to allocate the auction item to 
     and the payment each agent pays to the auctioneer
     """
-    def __init__(self, allocation_mode='highest', payment_mode='second_price',action_mode='same',args=None):
+    def __init__(self, allocation_mode='highest', payment_mode='VCG',action_mode='same',args=None):
         self.possible_agents = None
         self.state = None
         self.allocation_mode = allocation_mode
@@ -31,42 +31,17 @@ class Policy(object):
     def assign_payment_mode(self, payment_mode):
         self.payment_mode = payment_mode
 
-    def assign_allocation_mode(self,allocation_mode):
-        self.allocation_mode=allocation_mode
+    def compute_allocation(self, state):
+        winner = highest_allocation(state=state, possible_agents=self.possible_agents)
 
-    def compute_allocation(self, state,reserve_price=0):
-        if self.action_mode=='div':
-            state = de_transform_state(state=state, args=self.args)
-        if self.allocation_mode == 'highest':
-            winner = highest_allocation(state=state, possible_agents=self.possible_agents,reserve_price=reserve_price)
-        if self.allocation_mode == 'vcg': 
-            winner, _ = vcg_allocation(state, possible_agents = self.possible_agents, 
-                                    decay = self.args.multi_item_decay)
         self.last_winner=winner
 
 
         return winner
 
     def compute_payment(self, state, winner=None):
-
-
-        if self.action_mode=='div':
-            state= de_transform_state(state=state,args=self.args)
-
-        if self.payment_mode == 'second_price':
-            payment = second_price_rule(state, possible_agents=self.possible_agents, winner=winner)
-        elif self.payment_mode == 'first_price':
-            payment = first_price_rule(state, possible_agents=self.possible_agents, winner=winner)
-
-        elif self.payment_mode =='third_price':
-            payment = third_price_rule(state, possible_agents=self.possible_agents, winner=winner)
-        elif self.payment_mode =='pay_by_submit':
+        if self.payment_mode =='VCG':
             payment = pay_by_submit(state, possible_agents=self.possible_agents, winner=winner)
-        elif self.payment_mode == 'vcg': 
-            payment = vcg_payment(state, possible_agents=self.possible_agents, decay = self.args.multi_item_decay)
-        else:
-            print('not find the payment mode' + str(self.payment_mode))
-
         self.last_payment=payment
 
         return payment
@@ -133,4 +108,6 @@ class Policy(object):
                     return True, self.last_payment[self.last_winner]
                 else:
                     return False,None
+
+
 
